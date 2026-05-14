@@ -6,6 +6,7 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Billboard } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { getCharacterTexture, SPRITE_W, SPRITE_H } from "./CharacterSprites";
 import * as THREE from "three";
 import { CharacterId, CHARACTERS } from "@/lib/characters";
 import { GADGETS, ROOMS, RoomId } from "@/lib/gadgets";
@@ -153,43 +154,40 @@ function PlayerMesh({
   });
 
   const color = char.color;
+  const texture = getCharacterTexture(characterId);
+  const aspect = SPRITE_H / SPRITE_W;
 
   return (
     <group ref={groupRef} position={[playerPos.x, 0, playerPos.z]}>
       {/* Shadow disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[PLAYER_R, 16]} />
-        <meshBasicMaterial color="#000" transparent opacity={0.3} />
+        <circleGeometry args={[PLAYER_R + 0.05, 16]} />
+        <meshBasicMaterial color="#000" transparent opacity={0.35} />
       </mesh>
       {/* Glow ring */}
       <mesh ref={ringRef} position={[0, 0.02, 0]}>
-        <torusGeometry args={[0.38, 0.022, 6, 28]} />
+        <torusGeometry args={[0.42, 0.024, 6, 28]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={3} />
       </mesh>
-      {/* Body */}
-      <mesh position={[0, 0.52, 0]} castShadow>
-        <cylinderGeometry args={[PLAYER_R, PLAYER_R, 0.72, 14]} />
-        <meshStandardMaterial color={color} roughness={0.35} metalness={0.15} emissive={color} emissiveIntensity={0.2} />
-      </mesh>
-      {/* Head */}
-      <mesh position={[0, 1.06, 0]} castShadow>
-        <sphereGeometry args={[0.33, 14, 10]} />
-        <meshStandardMaterial color={color} roughness={0.35} metalness={0.15} emissive={color} emissiveIntensity={0.2} />
-      </mesh>
-      {/* Label */}
-      <Billboard position={[0, 1.65, 0]}>
+      {/* Character sprite — always faces camera */}
+      <Billboard position={[0, 0, 0]}>
+        <mesh position={[0, 1.0, 0]}>
+          <planeGeometry args={[1.1, 1.1 * aspect]} />
+          <meshBasicMaterial map={texture} transparent alphaTest={0.05} side={THREE.DoubleSide} />
+        </mesh>
+      </Billboard>
+      {/* Name label */}
+      <Billboard position={[0, 2.1, 0]}>
         <Html center style={{ pointerEvents: "none" }}>
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"2px" }}>
-            <span style={{ fontSize:"20px", filter:`drop-shadow(0 0 6px ${color})` }}>{char.emoji}</span>
-            <span style={{
-              color, fontSize:"10px", fontFamily:"monospace", fontWeight:"bold",
-              background:"rgba(0,0,0,0.8)", padding:"1px 6px", borderRadius:"4px",
-              border:`1px solid ${color}`, textShadow:`0 0 8px ${color}`,
-            }}>{char.name.split(" ")[0]}</span>
-          </div>
+          <span style={{
+            color, fontSize:"10px", fontFamily:"monospace", fontWeight:"bold",
+            background:"rgba(0,0,0,0.8)", padding:"2px 6px", borderRadius:"4px",
+            border:`1px solid ${color}`, textShadow:`0 0 8px ${color}`,
+            whiteSpace:"nowrap",
+          }}>{char.name}</span>
         </Html>
       </Billboard>
-      <pointLight color={color} intensity={2} distance={3.5} decay={2} />
+      <pointLight color={color} intensity={1.5} distance={3.5} decay={2} />
     </group>
   );
 }
@@ -208,38 +206,41 @@ function NPC({ id }: { id: string }) {
       ref.current.position.y = Math.sin(clock.getElapsedTime() * 1.4 + seed) * 0.07;
   });
 
+  const texture = getCharacterTexture(id);
+  const aspect  = SPRITE_H / SPRITE_W;
+
   return (
     <group ref={ref} position={[pos.col + 0.5, 0, pos.row + 0.5]}>
+      {/* Shadow */}
       <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[0.28, 14]} />
+        <circleGeometry args={[0.26, 14]} />
         <meshBasicMaterial color="#000" transparent opacity={0.25} />
       </mesh>
+      {/* Glow ring */}
       <mesh position={[0, 0.02, 0]}>
         <torusGeometry args={[0.32, 0.018, 6, 24]} />
         <meshStandardMaterial color={char.color} emissive={char.color} emissiveIntensity={2} />
       </mesh>
-      <mesh position={[0, 0.48, 0]} castShadow>
-        <cylinderGeometry args={[0.24, 0.24, 0.62, 12]} />
-        <meshStandardMaterial color={char.color} roughness={0.4} emissive={char.color} emissiveIntensity={0.25} />
-      </mesh>
-      <mesh position={[0, 0.96, 0]} castShadow>
-        <sphereGeometry args={[0.28, 12, 9]} />
-        <meshStandardMaterial color={char.color} roughness={0.4} emissive={char.color} emissiveIntensity={0.25} />
-      </mesh>
-      <Billboard position={[0, 1.5, 0]}>
+      {/* Character sprite */}
+      <Billboard>
+        <mesh position={[0, 0.9, 0]}>
+          <planeGeometry args={[0.95, 0.95 * aspect]} />
+          <meshBasicMaterial map={texture} transparent alphaTest={0.05} side={THREE.DoubleSide} />
+        </mesh>
+      </Billboard>
+      {/* Label */}
+      <Billboard position={[0, 1.95, 0]}>
         <Html center style={{ pointerEvents:"none" }}>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"1px" }}>
-            <span style={{ fontSize:"16px", filter:`drop-shadow(0 0 5px ${char.color})` }}>{char.emoji}</span>
             <span style={{
               color: char.color, fontSize:"9px", fontFamily:"monospace", fontWeight:"bold",
-              background:"rgba(0,0,0,0.85)", padding:"1px 4px", borderRadius:"3px",
-              border:`1px solid ${char.color}`,
-            }}>{char.name.split(" ")[0]}</span>
-            <span style={{ fontSize:"10px", opacity:0.7 }}>💬 E</span>
+              background:"rgba(0,0,0,0.85)", padding:"1px 5px", borderRadius:"3px",
+              border:`1px solid ${char.color}`, whiteSpace:"nowrap",
+            }}>{char.name.split(" ")[0]} 💬</span>
           </div>
         </Html>
       </Billboard>
-      <pointLight color={char.color} intensity={1} distance={2.5} decay={2} />
+      <pointLight color={char.color} intensity={0.8} distance={2.5} decay={2} />
     </group>
   );
 }
