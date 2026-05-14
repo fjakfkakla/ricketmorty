@@ -6,8 +6,8 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Billboard } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { getCharacterTexture, SPRITE_W, SPRITE_H } from "./CharacterSprites";
 import * as THREE from "three";
+import CharacterModel from "./CharacterModel";
 import { CharacterId, CHARACTERS } from "@/lib/characters";
 import { GADGETS, ROOMS, RoomId } from "@/lib/gadgets";
 import {
@@ -86,9 +86,7 @@ function PlayerMesh({
   onInteractTarget: (npcId: string | null, gadgetId: string | null) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const ringRef  = useRef<THREE.Mesh>(null);
   const currentRoom = useRef<RoomId | null>(null);
-  const char = CHARACTERS[characterId];
 
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime();
@@ -116,8 +114,6 @@ function PlayerMesh({
         playerPos.z
       );
     }
-    if (ringRef.current) ringRef.current.rotation.y = t * 2;
-
     // --- Room change ---
     const room = getRoomAt(Math.floor(playerPos.z), Math.floor(playerPos.x));
     if (room && room !== currentRoom.current) {
@@ -153,41 +149,9 @@ function PlayerMesh({
     }
   });
 
-  const color = char.color;
-  const texture = getCharacterTexture(characterId);
-  const aspect = SPRITE_H / SPRITE_W;
-
   return (
     <group ref={groupRef} position={[playerPos.x, 0, playerPos.z]}>
-      {/* Shadow disc */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[PLAYER_R + 0.05, 16]} />
-        <meshBasicMaterial color="#000" transparent opacity={0.35} />
-      </mesh>
-      {/* Glow ring */}
-      <mesh ref={ringRef} position={[0, 0.02, 0]}>
-        <torusGeometry args={[0.42, 0.024, 6, 28]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={3} />
-      </mesh>
-      {/* Character sprite — always faces camera */}
-      <Billboard position={[0, 0, 0]}>
-        <mesh position={[0, 1.0, 0]}>
-          <planeGeometry args={[1.1, 1.1 * aspect]} />
-          <meshBasicMaterial map={texture} transparent alphaTest={0.05} side={THREE.DoubleSide} />
-        </mesh>
-      </Billboard>
-      {/* Name label */}
-      <Billboard position={[0, 2.1, 0]}>
-        <Html center style={{ pointerEvents: "none" }}>
-          <span style={{
-            color, fontSize:"10px", fontFamily:"monospace", fontWeight:"bold",
-            background:"rgba(0,0,0,0.8)", padding:"2px 6px", borderRadius:"4px",
-            border:`1px solid ${color}`, textShadow:`0 0 8px ${color}`,
-            whiteSpace:"nowrap",
-          }}>{char.name}</span>
-        </Html>
-      </Billboard>
-      <pointLight color={color} intensity={1.5} distance={3.5} decay={2} />
+      <CharacterModel characterId={characterId} isPlayer={true} position={[0, 0, 0]} />
     </group>
   );
 }
@@ -206,41 +170,9 @@ function NPC({ id }: { id: string }) {
       ref.current.position.y = Math.sin(clock.getElapsedTime() * 1.4 + seed) * 0.07;
   });
 
-  const texture = getCharacterTexture(id);
-  const aspect  = SPRITE_H / SPRITE_W;
-
   return (
     <group ref={ref} position={[pos.col + 0.5, 0, pos.row + 0.5]}>
-      {/* Shadow */}
-      <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[0.26, 14]} />
-        <meshBasicMaterial color="#000" transparent opacity={0.25} />
-      </mesh>
-      {/* Glow ring */}
-      <mesh position={[0, 0.02, 0]}>
-        <torusGeometry args={[0.32, 0.018, 6, 24]} />
-        <meshStandardMaterial color={char.color} emissive={char.color} emissiveIntensity={2} />
-      </mesh>
-      {/* Character sprite */}
-      <Billboard>
-        <mesh position={[0, 0.9, 0]}>
-          <planeGeometry args={[0.95, 0.95 * aspect]} />
-          <meshBasicMaterial map={texture} transparent alphaTest={0.05} side={THREE.DoubleSide} />
-        </mesh>
-      </Billboard>
-      {/* Label */}
-      <Billboard position={[0, 1.95, 0]}>
-        <Html center style={{ pointerEvents:"none" }}>
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"1px" }}>
-            <span style={{
-              color: char.color, fontSize:"9px", fontFamily:"monospace", fontWeight:"bold",
-              background:"rgba(0,0,0,0.85)", padding:"1px 5px", borderRadius:"3px",
-              border:`1px solid ${char.color}`, whiteSpace:"nowrap",
-            }}>{char.name.split(" ")[0]} 💬</span>
-          </div>
-        </Html>
-      </Billboard>
-      <pointLight color={char.color} intensity={0.8} distance={2.5} decay={2} />
+      <CharacterModel characterId={id as CharacterId} isPlayer={false} position={[0, 0, 0]} />
     </group>
   );
 }
