@@ -10,9 +10,9 @@ import ChatPanel from "@/components/game/ChatPanel";
 import Notification, { NotifData } from "@/components/game/Notification";
 import VirtualJoystick from "@/components/game/VirtualJoystick";
 import { GameEventPayload } from "@/components/game/GameScene";
-import { PhaserGameHandle } from "@/components/game/PhaserGame";
+import { Scene3DHandle } from "@/components/game3d/Scene3D";
 
-const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), { ssr: false });
+const Scene3D = dynamic(() => import("@/components/game3d/Scene3D"), { ssr: false });
 
 const RICK_ANGRY_MESSAGES = [
   "MAIS QU'EST-CE QUE TU FAIS ?! *rot* C'est à MOI ça ! Repose-le immédiatement !",
@@ -36,7 +36,7 @@ export default function GameClient() {
   const [gadgetEffect, setGadgetEffect] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const notifRef = useRef(0);
-  const phaserRef = useRef<PhaserGameHandle>(null);
+  const phaserRef = useRef<Scene3DHandle>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
@@ -132,8 +132,8 @@ export default function GameClient() {
 
   return (
     <div className="game-container">
-      {/* Phaser canvas */}
-      <PhaserGame ref={phaserRef} characterId={characterId} onEvent={handleGameEvent} />
+      {/* 3D scene */}
+      <Scene3D ref={phaserRef} characterId={characterId} onEvent={handleGameEvent} />
 
       {/* HUD */}
       <HUD
