@@ -22,9 +22,7 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(
 
     useImperativeHandle(ref, () => ({
       setJoystick(x: number, y: number) {
-        if (sceneRef.current) {
-          sceneRef.current.touchInput = { x, y };
-        }
+        if (sceneRef.current) sceneRef.current.touchInput = { x, y };
       },
       triggerInteract() {
         sceneRef.current?.triggerInteract();
@@ -34,10 +32,8 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(
     useEffect(() => {
       if (!containerRef.current || gameRef.current) return;
 
-      let Phaser: typeof import("phaser");
-
       async function initPhaser() {
-        Phaser = (await import("phaser")).default;
+        const Phaser = (await import("phaser")).default;
 
         const config: import("phaser").Types.Core.GameConfig = {
           type: Phaser.AUTO,
@@ -49,25 +45,24 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(
             default: "arcade",
             arcade: { gravity: { x: 0, y: 0 }, debug: false },
           },
-          scene: [HouseScene],
+          // Do NOT put scene in the array — start it manually with data below
+          scene: [],
           scale: {
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
           },
-          input: {
-            keyboard: true,
-          },
+          input: { keyboard: true },
         };
 
         const game = new Phaser.Game(config);
         gameRef.current = game;
 
+        // Add and start the scene once the game is ready, passing init data
         game.events.once("ready", () => {
-          game.scene.start("HouseScene", { characterId, onEvent });
-          // Grab scene reference after a tick
+          game.scene.add("HouseScene", HouseScene, true, { characterId, onEvent });
           setTimeout(() => {
             sceneRef.current = game.scene.getScene("HouseScene") as HouseScene;
-          }, 500);
+          }, 300);
         });
       }
 
@@ -80,7 +75,7 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(
       };
     }, [characterId, onEvent]);
 
-    return <div ref={containerRef} className="absolute inset-0" />;
+    return <div ref={containerRef} className="absolute inset-0" style={{ zIndex: 0 }} />;
   }
 );
 
