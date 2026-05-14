@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+:root {
+  --rm-green: #39ff14;
+  --rm-blue: #00b4d8;
+  --rm-yellow: #ffd60a;
+  --rm-dark: #0a0a0a;
+  --rm-portal: #7fff00;
+}
+
+@theme inline {
+  --color-background: var(--rm-dark);
+  --color-foreground: #ededed;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--rm-dark);
+  color: #ededed;
+  font-family: 'Arial', sans-serif;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Portal animation */
+@keyframes portalSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes glitch {
+  0% { text-shadow: 2px 0 #39ff14, -2px 0 #00b4d8; }
+  25% { text-shadow: -2px 0 #39ff14, 2px 0 #00b4d8; }
+  50% { text-shadow: 2px 2px #39ff14, -2px -2px #00b4d8; }
+  75% { text-shadow: -2px 2px #39ff14, 2px -2px #00b4d8; }
+  100% { text-shadow: 2px 0 #39ff14, -2px 0 #00b4d8; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes portalPulse {
+  0%, 100% { box-shadow: 0 0 20px #39ff14, 0 0 40px #39ff14, inset 0 0 20px rgba(57,255,20,0.1); }
+  50% { box-shadow: 0 0 40px #39ff14, 0 0 80px #39ff14, inset 0 0 40px rgba(57,255,20,0.2); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes neonFlicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14, 0 0 40px #39ff14;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+  }
+}
+
+.portal-glow {
+  animation: portalPulse 2s ease-in-out infinite;
+}
+
+.glitch-text {
+  animation: glitch 0.3s infinite;
+}
+
+.float-anim {
+  animation: float 3s ease-in-out infinite;
+}
+
+.neon-flicker {
+  animation: neonFlicker 3s infinite;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Game UI */
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.hud-panel {
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #39ff14;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.chat-bubble {
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 280px;
+  word-wrap: break-word;
+}
+
+.chat-bubble.player {
+  background: rgba(57, 255, 20, 0.15);
+  border: 1px solid #39ff14;
+  margin-left: auto;
+  color: #39ff14;
+}
+
+.chat-bubble.npc {
+  background: rgba(0, 180, 216, 0.15);
+  border: 1px solid #00b4d8;
+  color: #00b4d8;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #39ff14; border-radius: 2px; }
+
+/* Notification */
+@keyframes notifSlide {
+  0% { transform: translateX(100%); opacity: 0; }
+  10% { transform: translateX(0); opacity: 1; }
+  80% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+.notif-slide {
+  animation: notifSlide 3s ease-in-out forwards;
+}
