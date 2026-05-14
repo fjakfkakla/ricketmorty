@@ -15,6 +15,7 @@ interface ChatPanelProps {
   npcId: CharacterId | null;
   playerCharacterId: CharacterId;
   initialNpcMessage?: string;
+  isMobile?: boolean;
 }
 
 export default function ChatPanel({
@@ -23,6 +24,7 @@ export default function ChatPanel({
   npcId,
   playerCharacterId,
   initialNpcMessage,
+  isMobile = false,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -98,13 +100,16 @@ export default function ChatPanel({
   const npc = CHARACTERS[npcId];
   const player = CHARACTERS[playerCharacterId];
 
+  const mobileStyle = isMobile
+    ? { inset: 0, width: "100%", height: "100%", borderRadius: 0, bottom: 0, right: 0 }
+    : { bottom: "16px", right: "16px", width: "340px", height: "420px", borderRadius: "12px" };
+
   return (
     <div
-      className="absolute bottom-4 right-4 flex flex-col rounded-xl overflow-hidden z-50"
+      className="absolute flex flex-col overflow-hidden z-50"
       style={{
-        width: "340px",
-        height: "420px",
-        background: "rgba(0,0,0,0.92)",
+        ...mobileStyle,
+        background: "rgba(0,0,0,0.96)",
         border: `2px solid ${npc.color}`,
         boxShadow: `0 0 30px ${npc.glowColor}`,
       }}

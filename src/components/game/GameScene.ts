@@ -89,6 +89,8 @@ export class HouseScene extends Phaser.Scene {
   private promptText?: Phaser.GameObjects.Text;
   private playerVx = 0;
   private playerVy = 0;
+  // Touch/joystick input (set externally by React)
+  public touchInput: { x: number; y: number } = { x: 0, y: 0 };
 
   constructor() {
     super({ key: "HouseScene" });
@@ -316,15 +318,22 @@ export class HouseScene extends Phaser.Scene {
 
   update() {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
-    const vx =
+
+    // Keyboard input
+    const kbVx =
       (this.cursors.left.isDown || this.wasd.left.isDown ? -1 : 0) +
       (this.cursors.right.isDown || this.wasd.right.isDown ? 1 : 0);
-    const vy =
+    const kbVy =
       (this.cursors.up.isDown || this.wasd.up.isDown ? -1 : 0) +
       (this.cursors.down.isDown || this.wasd.down.isDown ? 1 : 0);
 
-    const len = Math.sqrt(vx * vx + vy * vy) || 1;
-    body.setVelocity((vx / len) * PLAYER_SPEED, (vy / len) * PLAYER_SPEED);
+    // Merge keyboard + touch joystick
+    const rawVx = kbVx !== 0 ? kbVx : this.touchInput.x;
+    const rawVy = kbVy !== 0 ? kbVy : this.touchInput.y;
+
+    const len = Math.sqrt(rawVx * rawVx + rawVy * rawVy) || 1;
+    const speed = len > 0.1 ? PLAYER_SPEED : 0;
+    body.setVelocity((rawVx / len) * speed, (rawVy / len) * speed);
 
     this.checkRoomChange();
     this.checkProximity();
@@ -395,6 +404,15 @@ export class HouseScene extends Phaser.Scene {
     } else {
       this.promptText.setAlpha(0);
     }
+  }
+
+  // Called by React touch button
+  public triggerInteract() {
+    this.handleInteract();
+  }
+
+  public hasNearbyTarget(): boolean {
+    return this.nearNpc !== null || this.nearGadget !== null;
   }
 
   private handleInteract() {

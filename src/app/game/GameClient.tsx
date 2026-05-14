@@ -8,7 +8,9 @@ import { GADGETS, ROOMS, RoomId } from "@/lib/gadgets";
 import HUD from "@/components/game/HUD";
 import ChatPanel from "@/components/game/ChatPanel";
 import Notification, { NotifData } from "@/components/game/Notification";
+import VirtualJoystick from "@/components/game/VirtualJoystick";
 import { GameEventPayload } from "@/components/game/GameScene";
+import { PhaserGameHandle } from "@/components/game/PhaserGame";
 
 const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), { ssr: false });
 
@@ -32,124 +34,93 @@ export default function GameClient() {
   const [activeNpc, setActiveNpc] = useState<CharacterId | null>(null);
   const [notification, setNotification] = useState<NotifData | null>(null);
   const [gadgetEffect, setGadgetEffect] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const notifRef = useRef(0);
+  const phaserRef = useRef<PhaserGameHandle>(null);
 
-  // Validate character
   useEffect(() => {
-    if (!CHARACTERS[characterId]) {
-      router.replace("/");
-    }
+    const check = () => setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    if (!CHARACTERS[characterId]) router.replace("/");
   }, [characterId, router]);
 
   function showNotif(data: Omit<NotifData, "id">) {
     setNotification({ ...data, id: String(++notifRef.current) });
   }
 
-  const handleGameEvent = useCallback(
-    (event: GameEventPayload) => {
-      switch (event.type) {
-        case "room_change": {
-          setCurrentRoom(event.data.room as RoomId);
-          showNotif({
-            message: `${event.data.roomName as string}`,
-            emoji: "📍",
-            color: "#00b4d8",
-            type: "info",
-          });
-          break;
-        }
-
-        case "gadget_pickup": {
-          const gadgetId = event.data.gadgetId as string;
-          const gadgetName = event.data.gadgetName as string;
-          setInventory((prev) => (prev.includes(gadgetId) ? prev : [...prev, gadgetId]));
-          showNotif({
-            message: `Tu ramasses : ${gadgetName}`,
-            emoji: "✅",
-            color: "#39ff14",
-            type: "pickup",
-          });
-          break;
-        }
-
-        case "npc_interact": {
-          const npcId = event.data.npcId as CharacterId;
-          setActiveNpc(npcId);
-          setChatOpen(true);
-          break;
-        }
-
-        case "rick_angry": {
-          const gadgetName = event.data.gadgetName as string;
-          const msgTemplate =
-            RICK_ANGRY_MESSAGES[Math.floor(Math.random() * RICK_ANGRY_MESSAGES.length)];
-          const msg = msgTemplate.replace("{gadget}", gadgetName);
-
-          setRickAnger((prev) => Math.min(100, prev + 30));
-          showNotif({
-            message: msg,
-            emoji: "😤",
-            color: "#ff4444",
-            type: "angry",
-          });
-          // Anger decays over time
-          setTimeout(() => setRickAnger((prev) => Math.max(0, prev - 15)), 8000);
-          break;
-        }
-
-        case "notification": {
-          showNotif({
-            message: event.data.message as string,
-            emoji: (event.data.emoji as string) || "ℹ️",
-            color: (event.data.color as string) || "#ffffff",
-            type: "info",
-          });
-          break;
-        }
+  const handleGameEvent = useCallback((event: GameEventPayload) => {
+    switch (event.type) {
+      case "room_change": {
+        setCurrentRoom(event.data.room as RoomId);
+        showNotif({ message: event.data.roomName as string, emoji: "📍", color: "#00b4d8", type: "info" });
+        break;
       }
-    },
-    []
-  );
+      case "gadget_pickup": {
+        const gadgetId = event.data.gadgetId as string;
+        const gadgetName = event.data.gadgetName as string;
+        setInventory((prev) => (prev.includes(gadgetId) ? prev : [...prev, gadgetId]));
+        showNotif({ message: `Tu ramasses : ${gadgetName}`, emoji: "✅", color: "#39ff14", type: "pickup" });
+        break;
+      }
+      case "npc_interact": {
+        setActiveNpc(event.data.npcId as CharacterId);
+        setChatOpen(true);
+        break;
+      }
+      case "rick_angry": {
+        const gadgetName = event.data.gadgetName as string;
+        const msg = RICK_ANGRY_MESSAGES[Math.floor(Math.random() * RICK_ANGRY_MESSAGES.length)].replace(
+          "{gadget}",
+          gadgetName
+        );
+        setRickAnger((prev) => Math.min(100, prev + 30));
+        showNotif({ message: msg, emoji: "😤", color: "#ff4444", type: "angry" });
+        setTimeout(() => setRickAnger((prev) => Math.max(0, prev - 15)), 8000);
+        break;
+      }
+      case "notification": {
+        showNotif({
+          message: event.data.message as string,
+          emoji: (event.data.emoji as string) || "ℹ️",
+          color: (event.data.color as string) || "#ffffff",
+          type: "info",
+        });
+        break;
+      }
+    }
+  }, []);
 
   function handleUseGadget(gadgetId: string) {
     const gadget = GADGETS.find((g) => g.id === gadgetId);
     if (!gadget) return;
     setGadgetEffect(gadget.effect);
-    showNotif({
-      message: gadget.effect,
-      emoji: gadget.emoji,
-      color: gadget.color,
-      type: "info",
-    });
+    showNotif({ message: gadget.effect, emoji: gadget.emoji, color: gadget.color, type: "info" });
     setTimeout(() => setGadgetEffect(null), 3000);
   }
 
   function handleOpenChat() {
-    if (chatOpen) {
-      setChatOpen(false);
-      return;
-    }
-    // Open chat with a random NPC from current room or any available NPC
+    if (chatOpen) { setChatOpen(false); return; }
     const room = ROOMS[currentRoom];
     const roomNpcs = (room?.npcs || []).filter((id: string) => id !== characterId);
     const allNpcs = Object.keys(CHARACTERS).filter((id) => id !== characterId) as CharacterId[];
     const npc = roomNpcs[0] || allNpcs[0];
-    if (npc) {
-      setActiveNpc(npc as CharacterId);
-      setChatOpen(true);
-    }
+    if (npc) { setActiveNpc(npc as CharacterId); setChatOpen(true); }
   }
 
-  // TAB to toggle chat
+  function handleTouchInteract() {
+    phaserRef.current?.triggerInteract();
+  }
+
+  // TAB / Escape keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        handleOpenChat();
-      }
-      if (e.key === "Escape") {
-        setChatOpen(false);
-      }
+      if (e.key === "Tab") { e.preventDefault(); handleOpenChat(); }
+      if (e.key === "Escape") setChatOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -157,12 +128,14 @@ export default function GameClient() {
 
   if (!CHARACTERS[characterId]) return null;
 
+  const player = CHARACTERS[characterId];
+
   return (
     <div className="game-container">
-      {/* Phaser game canvas */}
-      <PhaserGame characterId={characterId} onEvent={handleGameEvent} />
+      {/* Phaser canvas */}
+      <PhaserGame ref={phaserRef} characterId={characterId} onEvent={handleGameEvent} />
 
-      {/* HUD overlay */}
+      {/* HUD */}
       <HUD
         playerCharacterId={characterId}
         currentRoom={currentRoom}
@@ -171,6 +144,7 @@ export default function GameClient() {
         onUseGadget={handleUseGadget}
         onOpenChat={handleOpenChat}
         isChatOpen={chatOpen}
+        isMobile={isMobile}
       />
 
       {/* Chat panel */}
@@ -179,6 +153,7 @@ export default function GameClient() {
         onClose={() => setChatOpen(false)}
         npcId={activeNpc}
         playerCharacterId={characterId}
+        isMobile={isMobile}
       />
 
       {/* Notifications */}
@@ -186,17 +161,14 @@ export default function GameClient() {
 
       {/* Gadget effect overlay */}
       {gadgetEffect && (
-        <div
-          className="absolute inset-0 pointer-events-none flex items-center justify-center z-30"
-          style={{ background: "rgba(57,255,20,0.03)" }}
-        >
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
           <div
-            className="text-center px-8 py-4 rounded-2xl fade-in-up"
+            className="text-center px-6 py-3 rounded-2xl fade-in-up mx-4"
             style={{
-              background: "rgba(0,0,0,0.85)",
+              background: "rgba(0,0,0,0.9)",
               border: "2px solid #39ff14",
               boxShadow: "0 0 40px rgba(57,255,20,0.4)",
-              maxWidth: "400px",
+              maxWidth: "360px",
             }}
           >
             <p className="text-sm italic" style={{ color: "#39ff14", fontFamily: "monospace" }}>
@@ -206,16 +178,70 @@ export default function GameClient() {
         </div>
       )}
 
+      {/* Mobile touch controls */}
+      {isMobile && !chatOpen && (
+        <div className="absolute bottom-0 left-0 right-0 z-40 flex items-end justify-between px-5 pb-6 pointer-events-none">
+          {/* Joystick left */}
+          <div className="pointer-events-auto">
+            <VirtualJoystick
+              onChange={(state) => phaserRef.current?.setJoystick(state.x, state.y)}
+            />
+          </div>
+
+          {/* Right buttons */}
+          <div className="flex flex-col gap-3 items-center pointer-events-auto">
+            {/* Interact */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); handleTouchInteract(); }}
+              className="flex flex-col items-center justify-center rounded-full font-black text-black select-none active:scale-90 transition-transform"
+              style={{
+                width: "70px",
+                height: "70px",
+                background: `linear-gradient(135deg, ${player.color}, rgba(0,0,0,0.5))`,
+                border: `3px solid ${player.color}`,
+                boxShadow: `0 0 20px ${player.glowColor}`,
+                fontSize: "11px",
+                fontFamily: "monospace",
+                touchAction: "none",
+              }}
+            >
+              <span className="text-xl">👋</span>
+              <span style={{ color: "#000", fontSize: "9px", fontWeight: "bold" }}>AGIR</span>
+            </button>
+
+            {/* Chat */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); handleOpenChat(); }}
+              className="flex flex-col items-center justify-center rounded-full select-none active:scale-90 transition-transform"
+              style={{
+                width: "55px",
+                height: "55px",
+                background: chatOpen ? "rgba(57,255,20,0.2)" : "rgba(0,0,0,0.7)",
+                border: `2px solid ${chatOpen ? "#39ff14" : "rgba(255,255,255,0.3)"}`,
+                boxShadow: chatOpen ? "0 0 12px rgba(57,255,20,0.5)" : "none",
+                touchAction: "none",
+              }}
+            >
+              <span className="text-lg">💬</span>
+              <span style={{ color: chatOpen ? "#39ff14" : "#888", fontSize: "8px", fontFamily: "monospace" }}>
+                CHAT
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Back button */}
       <button
         onClick={() => router.push("/")}
-        className="absolute top-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all hover:scale-105"
+        className="absolute z-50 flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all hover:scale-105 active:scale-95"
         style={{
+          top: isMobile ? "60px" : "58px",
+          left: "12px",
           background: "rgba(0,0,0,0.8)",
           border: "1px solid rgba(255,255,255,0.2)",
           color: "rgba(255,255,255,0.6)",
           fontFamily: "monospace",
-          marginTop: "50px",
         }}
       >
         ← Quitter
